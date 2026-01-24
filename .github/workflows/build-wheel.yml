@@ -27,7 +27,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
         env:
-            CIBW_MANYLINUX_X86_64_IMAGE: ghcr.io/${{ github.repository }}:main
+            CIBW_MANYLINUX_X86_64_IMAGE: ghcr.io/${{ github.repository }}:cibuildwheel
         #   CIBW_SOME_OPTION: value
         #   ...
         # with:
