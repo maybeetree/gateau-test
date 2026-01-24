@@ -2,6 +2,10 @@ name: Build Wheel
 
 on: [push, pull_request]
 
+permissions:
+  contents: write   # create release + upload assets
+  packages: read    # pull image from GHCR
+
 jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
@@ -13,27 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install cuda
-        run: |
-          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
-          sudo dpkg -i cuda-keyring_1.1-1_all.deb
-          sudo apt-get update
-          sudo apt-get -y install \
-              cuda-nvcc-12-3 \
-              libcufft-dev-12-3 \
-              libcurand-dev-12-3
-          ls -lah /usr/local/cuda/bin
-          echo "/usr/local/cuda/bin" >> "$GITHUB_PATH"
-
-      - name: Install deps
-        run: |
-          sudo apt install -y \
-            libgsl-dev \
-            libhdf5-dev
-
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
-        # env:
+        env:
+            CIBW_MANYLINUX_X86_64_IMAGE: ghcr.io/${{ github.repository }}:main
         #   CIBW_SOME_OPTION: value
         #   ...
         # with:
