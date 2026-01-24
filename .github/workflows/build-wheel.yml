@@ -22,6 +22,7 @@ jobs:
               cuda-nvcc-12-3 \
               libcufft-dev-12-3 \
               libcurand-dev-12-3
+          ls -lah /usr/local/cuda/bin
           echo "/usr/local/cuda/bin" >> "$GITHUB_PATH"
 
       - name: Install deps
