@@ -15,7 +15,7 @@ jobs:
 
       - name: Install deps
         run: |
-          apt install -y \
+          sudo apt install -y \
               cuda-nvcc-12-3 \
               libcufft-dev-12-3 \
               libcurand-dev-12-3
