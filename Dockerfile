@@ -19,7 +19,7 @@ RUN \
 		cuda-nvcc-12-3 \
 		libcufft-devel-12-3 \
 		libcurand-devel-12-3 \
-		cuda-cudart-devel-23-3 `# needed only on almalinux?? ` \
+		cuda-cudart-devel-12-3 `# needed only on almalinux?? ` \
 		&& \
 	yum clean all && \
 	:
