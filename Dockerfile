@@ -30,3 +30,6 @@ RUN \
 	yum clean all && \
 	:
 
+# Fix env vars
+ENV PATH=/usr/local/cuda/bin:${PATH}
+
