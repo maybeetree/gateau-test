@@ -24,15 +24,6 @@ RUN \
 	yum clean all && \
 	:
 
-# Build tools
-RUN \
-	yum install -y \
-		`#gcc` \
-		`#gcc-c++ ``# This is gcc` \
-		&& \
-	yum clean all && \
-	:
-
 # gcc 12
 # Base image already comes with gcc 14
 # which is not compatible with cuda 12-3
