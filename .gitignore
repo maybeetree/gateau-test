@@ -116,6 +116,7 @@ gsl
 !archive/docker/*.tar*
 
 *.deb
+*.rpm
 
 build.docker
 build.dk
