@@ -15,7 +15,7 @@ RUN \
 		cuda-nvcc-12-3 \
 		libcufft-devel-12-3 \
 		libcurand-devel-12-3 \
-		&&
+		&& \
 	yum clean all && \
 	:
 
@@ -26,7 +26,7 @@ RUN \
 		gsl-devel \
 		hdf5 \
 		hdf5-devel \
-		&&
+		&& \
 	yum clean all && \
 	:
 
