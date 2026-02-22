@@ -34,7 +34,34 @@ else
       # Should be here:
       '/usr/local/cuda/lib64',
 
-      # Arend's laptop:
+      # sometimes /usr/local/cuda symlink to
+      # specific version doesnt get made,
+      # for example on ubuntu cuda11 packages,
+      # so check there manually
+      '/usr/local/cuda-12/lib64',
+      '/usr/local/cuda-12.9/lib64',
+      '/usr/local/cuda-12.8/lib64',
+      '/usr/local/cuda-12.7/lib64',
+      '/usr/local/cuda-12.6/lib64',
+      '/usr/local/cuda-12.5/lib64',
+      '/usr/local/cuda-12.4/lib64',
+      '/usr/local/cuda-12.3/lib64',
+      '/usr/local/cuda-12.2/lib64',
+      '/usr/local/cuda-12.1/lib64',
+      '/usr/local/cuda-11/lib64',
+      '/usr/local/cuda-11.9/lib64',
+      '/usr/local/cuda-11.8/lib64',
+      '/usr/local/cuda-11.7/lib64',
+      '/usr/local/cuda-11.6/lib64',
+      '/usr/local/cuda-11.5/lib64',
+      '/usr/local/cuda-11.4/lib64',
+      '/usr/local/cuda-11.3/lib64',
+      '/usr/local/cuda-11.2/lib64',
+      '/usr/local/cuda-11.1/lib64',
+
+      # Debian official packages
+      # (NOT nvidia's packages for debian)
+      # put it here:
       '/usr/lib/x86_64-linux-gnu/',
 
       # Unusual paths, but plausible
@@ -79,66 +106,19 @@ inc_dirs = include_directories(
   'src/gateau/cuda',
 )
 
-# ---- figure out static/dynamic gsl+hdf5 ----
-
-# are we building a wheel or are we `pip install`ing?
-is_building_wheel = run_command(
-  'sh', '-c', 'test -n "$PEP517_BUILD_BACKEND" && echo yes || echo no',
-  check : false
-).stdout().strip() == 'no'
-
-if get_option('gsl_static').enabled()
-  message('Option set to use STATIC gsl')
-  gsl_static = true
-elif get_option('gsl_static').disabled()
-  message('Option set to use DYNAMIC gsl')
-  gsl_static = false
-else
-  message('Option set to autochoose static/dynamic gsl...')
-
-  if is_building_wheel
-    message('we are building wheel, therefore choosing STATIC gsl')
-    gsl_static = true
-  else
-    message('we are building to install, therefore choosing DYNAMIC gsl')
-    gsl_static = false
-  endif
-endif
-
-
-if get_option('hdf5_static').enabled()
-  message('Option set to use STATIC hdf5')
-  hdf5_static = true
-elif get_option('hdf5_static').disabled()
-  message('Option set to use DYNAMIC hdf5')
-  hdf5_static = false
-else
-  message('Option set to autochoose static/dynamic hdf5...')
-
-  if is_building_wheel
-    message('we are building wheel, therefore choosing STATIC hdf5')
-    hdf5_static = true
-  else
-    message('we are building to install, therefore choosing DYNAMIC hdf5')
-    hdf5_static = false
-  endif
-endif
 
 # ---- External libraries ----
 gsl = dependency(
   'gsl',
   required: true,
-  static: gsl_static
   )
 gslcblas = cpp.find_library(
   'gslcblas',
   required: true,
-  static: gsl_static
   )
 hdf5 = dependency(
   'hdf5',
   required: true,
-  static: hdf5_static
   )
 
 libs = [cuda_libs, gsl, gslcblas, hdf5]
@@ -161,31 +141,6 @@ libgateau = library(
   install: true,
   install_dir: py.get_install_dir() / 'gateau',
 )
-
-#  libgateau = custom_target(
-#    'gateau',
-#    command: [
-#      nvcc,
-#      '-Xcompiler',
-#      '-shared',
-#      '-I', '../src/gateau/include',
-#      '-I', '@BUILD_ROOT@/src/gateau/cuda',
-#      '@INPUT@',
-#      ],
-#
-#    depend_files: [
-#      'src/gateau/include',
-#      ],
-#    input: cu_sources,
-#    output: ['libgateau.so'],
-#
-#    # Install the .so into the gateau python module
-#    # directory alongside the .py files
-#    install: true,
-#    install_dir: py.get_install_dir() / 'gateau',
-#  )
-#
-#endif
 
 subdir('src/gateau')
 
