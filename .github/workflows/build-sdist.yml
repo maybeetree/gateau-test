@@ -27,6 +27,8 @@ jobs:
 
       - name: Build sdist
         run: |
+          set -e
+          . /venv/bin/activate
           python -m build --sdist
 
       - name: List built artifacts (debug)
