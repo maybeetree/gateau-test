@@ -9,53 +9,13 @@ project(
   ]
 )
 
-#----------------------#
-# Find Python          #
-#----------------------#
-
 py = import('python').find_installation()
-
-
-#----------------------#
-# Find Compilers       #
-#----------------------#
-
-cpp_lang = add_languages('cpp', required: false, native: true)
-
-if not cpp_lang
-  error('
-    Could not find c++ compiler, aborting gateau installation!
-    Please install GCC.
-    HINT:
-    HINT: sudo apt install gcc
-    HINT:
-    ')
-endif
-
-cuda_lang = add_languages('cuda', required: false, native: true)
-
-if not cuda_lang
-  error('
-    Could not find nvidia nvcc compiler, aborting gateau installation!
-    Please install nvidia\'s CUDA toolkit either from nvidia\'s website 
-    or from your distribution\'s package manager.
-    NOTE:
-    NOTE: Some CUDA packages do not update the PATH environment variable.
-    NOTE: Yo must make sure that the directory containing
-    NOTE: `nvcc` executable is available in $PATH after installing cuda.
-    NOTE:
-    ')
-endif
-
-#----------------------#
-# Find Libraries       #
-#----------------------#
 
 cpp = meson.get_compiler('cpp', native: true)
 
-gsl = dependency('gsl', required: false)
-gslcblas = cpp.find_library('gslcblas', required: false)
-hdf5 = dependency('hdf5', required: false)
+gsl = dependency('gsl', required: true)
+gslcblas = cpp.find_library('gslcblas', required: true)
+hdf5 = dependency('hdf5', required: true)
 
 cuda_libs = dependency(
   'cuda',
@@ -63,41 +23,6 @@ cuda_libs = dependency(
   #version : '>=13',
   modules: ['cufft'],
   )
-
-
-if not gsl.found()
-  error('
-    Could not find libgsl, aborting gateau installation!
-    Please install pkg-config and 
-    GNU Scientific Library with development headers.
-    HINT:
-    HINT: sudo apt install pkg-config libgsl-dev
-    HINT:
-    ')
-endif
-
-if not gslcblas.found()
-  error('
-    Could not find gslcblas, aborting gateau installation!
-    Please install pkg-config and 
-    BLAS component of GNU Scientific Library with development headers.
-    NOTE: 
-    NOTE: gslcblas is usually packaged with libgsl. 
-    NOTE: It is strange that you have gsl but not gslcblas.
-    NOTE: Please check your gsl installation.
-    NOTE: 
-    ')
-endif
-
-if not hdf5.found()
-  error('
-    Could not find hdf5, aborting gateau installation!
-    Please install pkg-config and HDF5 with development headers.
-    HINT:
-    HINT: sudo apt install pkg-config libhdf5-dev
-    HINT:
-   ' )
-endif
 
 if cuda_libs.found()
   message('Meson could find cuda libraries normally, yay!')
