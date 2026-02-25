@@ -17,6 +17,8 @@ RUN \
 		&& \
 	:
 
+RUN apt-get -y install gcc g++ pkg-config libgsl-dev libhdf5-dev
+
 ENV PATH=/usr/local/cuda/bin:${PATH}
 
 

@@ -93,7 +93,7 @@ else
     )
 
   if not cuda_libs.found()
-    error('
+    error('''
       Could not find cufft library.
       Please check your cuda installation.
       If everything looks okay, try installing gateau
@@ -101,7 +101,7 @@ else
       and making sure that that location of your `libcufft.so`
       is included in the search paths specified in `meson.build`.
       Then, please open an issue.
-      ')
+      ''')
   endif
 endif
 
