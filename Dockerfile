@@ -5,9 +5,6 @@ ARG CUDA_KEYRING_URL=https://developer.download.nvidia.com/compute/cuda/repos/ub
 ARG DEBIAN_FRONTEND=noninteractive
 WORKDIR /setup
 
-# The standard gateau deps (sans cuda)
-RUN apt-get -y install gcc g++ pkg-config libgsl-dev libhdf5-dev
-
 RUN \
 	apt update && \
 	apt install -y \
@@ -21,6 +18,10 @@ RUN \
 		&& \
 		:
 
+# The standard gateau deps (sans cuda)
+RUN apt-get -y install gcc g++ pkg-config libgsl-dev libhdf5-dev
+
+# cuda
 RUN \
 	wget "${CUDA_KEYRING_URL}" && \
 	dpkg -i cuda-keyring_1.1-1_all.deb && \
