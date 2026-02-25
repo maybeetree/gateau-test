@@ -1,4 +1,4 @@
-name: Build Wheel and Create Release
+name: Build sdist and Create Release
 
 on:
   push:
@@ -7,15 +7,10 @@ on:
 
 permissions:
   contents: write   # create release + upload assets
-  packages: read    # pull image from GHCR
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-
-    container:
-      image: ghcr.io/${{ github.repository }}:main
-      options: --user root
 
     steps:
       - name: Checkout repository
@@ -25,25 +20,24 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Build wheel
+      - name: Install dependencies
         run: |
-          set -e
-          rm -rf dist
-          . /venv/bin/activate  # <-- wheelrename needs pkg from the venv
-          python -m build -Cbuild-dir=build.docker
-          ./scripts/wheelrename.py dist/*.whl
+          pip install build
 
-      - name: List built wheels (debug)
+      - name: Build sdist
+        run: |
+          python -m build --sdist
+
+      - name: List built artifacts (debug)
         run: ls -lah dist
 
-      - name: Create GitHub Release and upload .deb files
+      - name: Create GitHub Release and upload artifact
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            dist/*.whl
             dist/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
