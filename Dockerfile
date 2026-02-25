@@ -1,22 +1,19 @@
 FROM ubuntu:20.04
 
 ARG CUDA_KEYRING_URL=https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb
-ARG LIBGSL_DEB_URL=https://github.com/stratal-systems/ubuntu-20-04-packages/releases/download/v0-1/libgsl-static-pic_2.5.0_amd64.deb
-ARG LIBHDF5_DEB_URL=https://github.com/stratal-systems/ubuntu-20-04-packages/releases/download/v0-1/libhdf5-static-pic_2.0.0_amd64.deb
-
 
 ARG DEBIAN_FRONTEND=noninteractive
 WORKDIR /setup
 
+# The standard gateau deps (sans cuda)
+RUN apt-get -y install gcc g++ pkg-config libgsl-dev libhdf5-dev
+
 RUN \
 	apt update && \
 	apt install -y \
-		g++ \
-		gcc \
 		git  `# Needed by mesonpy??` \
 		git-annex  `# all git cmds will fail in annex repo w/o annex` \
 		meson \
-		pkg-config \
 		python3.9 \
 		python3.9-dev \
 		python3.9-venv \
@@ -40,13 +37,6 @@ RUN \
 	:
 
 ENV PATH=/usr/local/cuda/bin:${PATH}
-
-RUN \
-	wget "${LIBGSL_DEB_URL}" && \
-	wget "${LIBHDF5_DEB_URL}" && \
-	dpkg -i *.deb && \
-	rm -rf *.deb && \
-	:
 
 # These are all needed to build doxygen docs
 # plus jupyter but that's handled by pip 

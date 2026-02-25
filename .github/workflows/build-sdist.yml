@@ -7,10 +7,15 @@ on:
 
 permissions:
   contents: write   # create release + upload assets
+  packages: read    # pull image from GHCR
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/${{ github.repository }}:main
+      options: --user root
 
     steps:
       - name: Checkout repository
@@ -20,10 +25,6 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Install dependencies
-        run: |
-          pip install build
-
       - name: Build sdist
         run: |
           python -m build --sdist
@@ -31,7 +32,7 @@ jobs:
       - name: List built artifacts (debug)
         run: ls -lah dist
 
-      - name: Create GitHub Release and upload artifact
+      - name: Create GitHub Release and upload artifacts
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
