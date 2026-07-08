@@ -97,13 +97,14 @@ class simulator(object):
                    t_obs: float, 
                    az0: float,
                    el0: float,
-                   scan_func: Callable,
+                   scan_func: Union[Callable, tuple],
                    instrument_dict: dict[str, any],
                    telescope_dict: dict[str, any],
                    atmosphere_dict: dict[str, any],
                    source_dict: dict[str, any],
                    cascade_list: Union[list[dict[str, any]], str],
-                   cascade_yaml: str = "cascade.yaml") -> None:
+                   cascade_yaml: str = "cascade.yaml",
+                   use_cib: bool = True) -> None:
         """!
         Initialise a gateau setup. 
         THis function needs to be called before running a simulation.
@@ -117,6 +118,11 @@ class simulator(object):
         @param scan_func Function handle of the function defining the scan pattern. 
             First argument must be a Numpy array consisting of timestamps.
             Second and third argument must be scalars or Numpy arrays containing central azimuth and elevation values, respectively.
+            This parameter can also be a tuple containing three arrays in the following order:
+            (az, el, t), with az being an array with azimuth coordinates, in degrees,
+            el an array with elevation coordinates, in degrees, and t an array with time coordinates. 
+            In this way it is possible to import an observing plan.
+            Then, gateau will internally interpolate az and el on the timestamps set by t_obs and the smapling frequency.
         @param instrument_dict Dictionary containing instrument specification.
         @param telescope_dict Dictionary containing telescope specification.
         @param atmosphere_dict Dictionary containing atmosphere specification.
@@ -126,6 +132,8 @@ class simulator(object):
         @param cascade_yaml Name of .yaml file containing cascade.
             Only used if 'cascade_list' is a string containing a folder with a cascade .yaml.
             Defaults to 'cascade.yaml'.
+        @param use_cib Whether to add cosmic infrared background (CIB) monopole as background for cascade.
+            Engaging this adds a single-moded modified blackbody to the CMB signal.
 
         @returns Dictionary containing the aperture efficiency and atmospheric transmission.
             The latter is evaluated using the PWV0 supplied in the atmosphere dictionary.
@@ -140,7 +148,9 @@ class simulator(object):
         if isinstance(cascade_list, str):
             cascade_list = gcascade.read_from_folder(cascade_list, cascade_yaml) 
 
-        eta_cascade, psd_cascade, eta_ap, psd_cmb = gcascade.get_cascade(cascade_list, self.source["f_src"])
+        eta_cascade, psd_cascade, eta_ap, psd_cmb = gcascade.get_cascade(cascade_list, 
+                                                                         self.source["f_src"], 
+                                                                         use_cib)
 
         eta_stage = np.array([x for arr in eta_cascade for x in arr])
         psd_stage = np.array([x for arr in psd_cascade for x in arr])
@@ -167,7 +177,11 @@ class simulator(object):
         
         # Checking observation time against available time
         atm_meta = np.loadtxt(os.path.join(self.atmosphere["path"], "prepd", "atm_meta.datp"))
-        t_available = atm_meta[0] * (atm_meta[1] - 2 * atm_meta[2]) * self.atmosphere["dx"] / (self.atmosphere["v_wind"] + np.finfo(float).eps)
+
+        if self.atmosphere["screen_offset"] > atm_meta[0]:
+            self.clog.error(f"Requested screen offset of {self.atmosphere['screen_offset']} larger than amount of screens {atm_meta[0]}. Terminating setup.")
+        
+        t_available = (atm_meta[0] - self.atmosphere["screen_offset"]) * (atm_meta[1] - 2 * atm_meta[2]) * self.atmosphere["dx"] / (self.atmosphere["v_wind"] + np.finfo(float).eps)
 
         if t_available < t_obs:
             self.clog.warning(f"Requested observation time of {t_obs} s exceeds available time of {t_available} s in ARIS screens. Reducing requested time to available time.")
@@ -202,14 +216,24 @@ class simulator(object):
         # We also convert the average pwv tuple in the atmosphere dict to a starting pwv and a slope
         self.atmosphere["PWV_slope"] = (self.atmosphere["PWV0"][1] - self.atmosphere["PWV0"][0]) / times_array[-1]
 
-        az_scan_center, el_scan_center = scan_func(times_array, az0, el0)
+        if isinstance(scan_func, tuple):
+            az_scan = np.interp(times_array, scan_func[2]-scan_func[2][0], scan_func[0])
+            el_scan = np.interp(times_array, scan_func[2]-scan_func[2][0], scan_func[1])
+
+        else:
+            az_scan, el_scan = scan_func(times_array, az0, el0)
+
+        az_scan_center = np.ones(times_array.size) * az0
+        el_scan_center = np.ones(times_array.size) * el0
         self.telescope["az_scan_center"] = az_scan_center
         self.telescope["el_scan_center"] = el_scan_center
         
-        az_scan, el_scan = scan_func(times_array, az0, el0)
-
         self.telescope["az_scan"] = az_scan
         self.telescope["el_scan"] = el_scan
+
+        if isinstance(scan_func, tuple):
+            self.telescope["az_scan"] += az_scan_center
+            self.telescope["el_scan"] += el_scan_center
         
         #### INITIALISING INSTRUMENT PARAMETERS ####
         # First, check if channel frequencies are given.
@@ -321,12 +345,15 @@ class simulator(object):
             seed: int = 0,
             use_photon_noise: bool = True,
             use_rad_trans: bool = True,
-            use_pink_noise: bool = None) -> None:
+            use_pink_noise: bool = None,
+            dry_run: bool = False) -> None:
         """!
         Run a gateau simulation.
         This is the main routine of gateau and should be called after filling all dictionaries and running the 'initialise' method.
-        The last three arguments starting with 'use_...' are useful for debugging or characterisation of gateau.
+        The three arguments starting with 'use_...' are useful for debugging or characterisation of gateau.
         For regular simulations, these should not be changed.
+        The final argument allows for a "dry run" of gateau. 
+        This allows for a simulation to run without storing output, which can be handy for performance profiling.
 
         @ingroup public_api_simulator
         
@@ -348,6 +375,10 @@ class simulator(object):
             This toggle is just here to explicitly enable/disable it, even when the field is set.
             Defaults to None, which will leave the decision whether or not to 
             enable pink noise to whether or not the "pink_level" field is filled.
+        @param dry_run Whether to run the simulation dry (no output stored to disk) or not (output stored to disk).
+            This option can be used when profiling gateau performance for scaling,
+            in which case the output does not have to be stored and only timing is important.
+            Defaults to False, which will enable gateau to write output to disk.
         """
 
         if not self.initialisedSetup:
@@ -362,25 +393,31 @@ class simulator(object):
         outname = outname.with_suffix(".h5")
         path = outname.parent
 
-        if outname.is_file() and not overwrite:
-            self.clog.warning(f"File {outname.name} already exists in {path.resolve()}.")
-            choice = input("\033[93mProceed (y/n)? > ").lower()
-            if choice == "y" or choice == "":
-                pass
-            else:
-                exit()
-
-        path.mkdir(parents=True, exist_ok=True)
 
         # Check if enough HDD is available in outpath for this simulation
-        n_bytes_required = ((self.instrument["nf_ch"] + 2)*self.instrument["n_spax"] + 1) * self.n_times * 4
-        if (n_bytes_free := int(MEMFRAC * shutil.disk_usage(path).free)) < n_bytes_required:
-            self.clog.warning(f"Required disk space of {n_bytes_required} bytes exceeds available buffer of {n_bytes_free} bytes.")
-            choice = input("\033[93mProceed (y/n)? > ").lower()
-            if choice == "y" or choice == "":
-                pass
-            else:
-                exit()
+        # Also check if file exists
+        if not dry_run:
+            if outname.is_file() and not overwrite:
+                self.clog.warning(f"File {outname.name} already exists in {path.resolve()}.")
+                choice = input("\033[93mProceed (y/n)? > ").lower()
+                if choice == "y" or choice == "":
+                    pass
+                else:
+                    sys.exit()
+
+            path.mkdir(parents=True, exist_ok=True)
+            
+            n_bytes_required = ((self.instrument["nf_ch"] + 2)*self.instrument["n_spax"] + 1) * self.n_times * 4
+            if (n_bytes_free := int(MEMFRAC * shutil.disk_usage(path).free)) < n_bytes_required:
+                self.clog.warning(f"Required disk space of {n_bytes_required} bytes exceeds available buffer of {n_bytes_free} bytes.")
+                choice = input("\033[93mProceed (y/n)? > ").lower()
+                if choice == "y" or choice == "":
+                    pass
+                else:
+                    sys.exit()
+        else:
+            self.clog.warning("Running in dry mode, no output will be stored!")
+
 
         # Set debugging toggles
         self.instrument["use_photon_noise"] = use_photon_noise
@@ -399,7 +436,8 @@ class simulator(object):
                              self.n_times, 
                      outname,
                                        outscale,
-                  seed)
+                  seed,
+                                            dry_run)
 
         self.clog.info("\033[1;32m*** FINISHED gateau SIMULATION ***")
     

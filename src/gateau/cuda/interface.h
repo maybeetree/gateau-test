@@ -44,6 +44,7 @@ extern "C"
             char *outpath,
             char *outscale,
             unsigned long long int seed,
+            bool dry_run,
             char *atmpath
             );
 }

@@ -97,6 +97,7 @@ def allfillAtmosphere(AtmDict: dict[str, any],
     AtmStruct.path = c_char_p(os.path.join(AtmDict["path"], "prepd").encode())
     AtmStruct.pwv0 = c_float(AtmDict["PWV0"][0])
     AtmStruct.pwv_slope = c_float(AtmDict["PWV_slope"])
+    AtmStruct.screen_offset = c_int(AtmDict["screen_offset"])
 
 def allfillSource(SourceDict: dict[str, any], 
                   SourceStruct: Structure) -> None:

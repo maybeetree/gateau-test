@@ -70,7 +70,8 @@ class Atmosphere(Structure):
             ("dy", c_float),
             ("path", c_char_p),
             ("pwv0", c_float),
-            ("pwv_slope", c_float)]
+            ("pwv_slope", c_float),
+            ("screen_offset", c_int)]
 
 class Source(Structure):
     """!

@@ -19,6 +19,11 @@
 $RECYCLE.BIN
 System Volume Information
 
+# Damn you Arend Moerman!!!!
+*.wip
+src/*.wip
+src/cuda/*.wip
+
 # vscope
 .vscode/*
 *.code-workspace

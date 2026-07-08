@@ -28,6 +28,7 @@ Deciding if the output makes sense is still also for the user to decide and veri
 | "v_wind" | \f$u_\mathrm{w}\f$ | Windspeed along azimuth direction | float | 10 | \f$\mathbb{R}_{\geq 0}\f$ | m s\f$^{-1}\f$ |
 | "PWV0" | PWV\f$_0\f$ | Average PWV around which fluctuations are added. If a linear gradient throughout the observation is desired,<br>supply a 2-tuple (PWV\f$_\mathrm{start}\f$, PWV\f$_\mathrm{end}\f$) and `gateau` will interpolate between these two values | float, 2-tuple | 1 | [0.1,5.5]  | mm |
 | "T_atm" | \f$T_\mathrm{atm}\f$ | Physical temperature of atmosphere | float | 273 | \f$\mathbb{R}^+\f$ | K |
+| "screen_offset" | - | Offset of where to start ARIS screens | int | 0 | \f$\mathbb{N}\f$ | - |
 
 \section teldict Telescope Dictionary
 | Name of field | Symbol | Description | Datatype | Default value | Allowed range | Units |
