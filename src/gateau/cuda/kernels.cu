@@ -650,6 +650,7 @@ void run_gateau(
         char *outpath,
         char *outscale,
         unsigned long long int seed,
+        bool dry_run,
         char *atmpath
         ) 
 {
@@ -760,6 +761,7 @@ void run_gateau(
     // Instantiate and write filter freqs to output file
     OutputFile outfile(
             outpath, 
+            dry_run,
             instrument->num_spax,
             nttot, 
             nf_ch, 
@@ -769,6 +771,7 @@ void run_gateau(
             telescope->az_scan, 
             telescope->el_scan
             );
+
     delete[] times_arr;
 
     gpuErrchk( 
@@ -1157,6 +1160,7 @@ void run_gateau(
             ntscr
             );
     
+    // START OF PINK NOISE ALLOCATIONS
     nBlocks1D = ceilf((float)(nttot / 2 + 1) / NTHREADS1D / numSMs);
     blockSize1D = NTHREADS1D;
     gridSize1D = nBlocks1D*numSMs;
@@ -1166,6 +1170,33 @@ void run_gateau(
             seed+1,
             nttot / 2 + 1
             );
+
+    cufftComplex *d_pink_out;
+    gpuErrchk( 
+            cudaMalloc(
+                (void**)&d_pink_out, 
+                (nttot / 2 + 1) * sizeof(cufftComplex)
+                ) 
+            );
+
+    cufftHandle plan;
+
+    CUFFT_CALL( 
+            cufftPlan1d(
+                &plan, 
+                nttot, 
+                CUFFT_C2R,
+                1
+                ) 
+            );
+    float *d_sigout_pink;
+    gpuErrchk( 
+            cudaMalloc(
+                (void**)&d_sigout_pink, 
+                nttot * sizeof(float)
+                ) 
+            );
+    // END OF PINK NOISE ALLOCATIONS
     
     int ntscr_job;
     int nt_sub_scr_job;
@@ -1196,13 +1227,6 @@ void run_gateau(
         {
             for(int k=0; k<nf_ch; k++) 
             {
-                cufftComplex *d_pink_out;
-                gpuErrchk( 
-                        cudaMalloc(
-                            (void**)&d_pink_out, 
-                            (nttot / 2 + 1) * sizeof(cufftComplex)
-                            ) 
-                        );
                 nBlocks1D = ceilf((float)(nttot / 2 + 1) / NTHREADS1D / numSMs);
                 blockSize1D = NTHREADS1D;
                 gridSize1D = nBlocks1D*numSMs;
@@ -1218,24 +1242,6 @@ void run_gateau(
 
                 gpuErrchk( cudaDeviceSynchronize() );
                 
-                cufftHandle plan;
-
-                CUFFT_CALL( 
-                        cufftPlan1d(
-                            &plan, 
-                            nttot, 
-                            CUFFT_C2R,
-                            1
-                            ) 
-                        );
-                float *d_sigout_pink;
-                gpuErrchk( 
-                        cudaMalloc(
-                            (void**)&d_sigout_pink, 
-                            nttot * sizeof(float)
-                            ) 
-                        );
-
                 CUFFT_CALL( 
                         cufftExecC2R(
                             plan, 
@@ -1247,6 +1253,8 @@ void run_gateau(
                 nBlocks1D = ceilf((float)nttot / NTHREADS1D / numSMs);
                 blockSize1D = NTHREADS1D;
                 gridSize1D = nBlocks1D*numSMs;
+                
+                // KERNEL CALL
                 resp_cal_pink<<<gridSize1D, blockSize1D>>>(
                         d_sigout_pink,
                         c1[k],
@@ -1254,7 +1262,6 @@ void run_gateau(
                         );
                 
                 gpuErrchk( cudaDeviceSynchronize() );
-                gpuErrchk( cudaFree(d_pink_out) );
 
                 float *sigout_pink = new float[nttot];
                 
@@ -1266,8 +1273,8 @@ void run_gateau(
                             cudaMemcpyDeviceToHost
                             ) 
                         );
-                gpuErrchk( cudaFree(d_sigout_pink) );
 
+                gpuErrchk( cudaDeviceSynchronize() );
                 outfile.
                     write_pink_chunk_to_spaxel(
                             k,
@@ -1275,9 +1282,6 @@ void run_gateau(
                             );
 
                 delete[] sigout_pink;
-
-                CUFFT_CALL( cufftDestroy(plan) );
-                gpuErrchk( cudaDeviceSynchronize() );
             }
         }
 
@@ -1310,7 +1314,7 @@ void run_gateau(
                 // We make one dynamic array for host as well to read and copy screen to.
                 float *pwv_screen, *d_pwv_screen;
                 
-                datp = std::to_string(idx_wrap) + ".datp";
+                datp = std::to_string(idx_wrap + atmosphere->screen_offset) + ".datp";
                 readAtmScreen<float, ArrSpec>(
                         &pwv_screen, 
                         &x_atm, 
@@ -1612,11 +1616,16 @@ void run_gateau(
                 exit(1);
             }
         }
+
         if(!idx_spax) {outfile.close_obsattrs();}
         outfile.close_spaxel();
         
         printf("*** Progress: 100 / 100 ***\r");
     }
+    gpuErrchk( cudaFree(d_sigout_pink) );
+    gpuErrchk( cudaFree(d_pink_out) );
+    CUFFT_CALL( cufftDestroy(plan) );
+
     gpuErrchk( cudaDeviceReset() );
     delete[] c0;
     delete[] c1;

@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <filesystem>
+#include <vector>
 
 #include "hdf5.h"
 
@@ -52,6 +53,14 @@ void readEtaATM(
         U *freq_atm
         );
 
+//template <typename T, typename U>
+//void readAtmScreen(
+//        T **PWV_screen, 
+//        U *x_spec, 
+//        U *y_spec, 
+//        std::string path, 
+//        std::vector<std::string> datp
+//        ); 
 template <typename T, typename U>
 void readAtmScreen(
         T **PWV_screen, 
@@ -65,6 +74,7 @@ class OutputFile
 {
     private:
         const char *filename;
+        bool dry_run;
 
         // Handles for hdf5 file and groups
         hid_t   file_id;
@@ -102,6 +112,7 @@ class OutputFile
     public:
         OutputFile(
                 const char *filename, 
+                bool dry_run,
                 int nspax,
                 int ntimes, 
                 int nfreqs, 
@@ -113,8 +124,12 @@ class OutputFile
                 ) 
         {
             this->filename = filename;
+            this->dry_run = dry_run;
             this->ntimes = ntimes;
             this->nfreqs = nfreqs;
+            printf("%d\n", this->dry_run);
+
+            if (this->dry_run) {return;}
 
             dims_2D[0] = nfreqs;
             dims_2D[1] = ntimes;
@@ -326,6 +341,7 @@ class OutputFile
                 float *data
                 )
         {
+            if (this->dry_run) {return;}
             start_pwv[0] = offset_times_pwv;
             count_pwv[0] = ntimes_chunk;
 
@@ -365,6 +381,7 @@ class OutputFile
             check_API_call_status(H5Sclose(dspace_pwv_slab_id), __LINE__);
         }
         void close_obsattrs() {
+            if (this->dry_run) {return;}
             check_API_call_status(H5Dclose(dset_pwv_id), __LINE__);
             check_API_call_status(H5Sclose(dspace_pwv_id), __LINE__);
             check_API_call_status(H5Gclose(obsattrs_id), __LINE__);
@@ -376,6 +393,7 @@ class OutputFile
                 float el_spax
                 ) 
         {
+            if (this->dry_run) {return;}
             offset_times = 0;
             offset_freqs = 0;
             
@@ -465,6 +483,7 @@ class OutputFile
                 float *data
                 )
         {
+            if (this->dry_run) {return;}
             start_pink[0] = k_ch;
             count_pink[0] = 1;
 
@@ -508,6 +527,7 @@ class OutputFile
                 float *data
                 )
         {
+            if (this->dry_run) {return;}
             start[1] = offset_times;
             count[1] = ntimes_chunk;
 
@@ -569,12 +589,14 @@ class OutputFile
 
         void close_spaxel() 
         {
+            if (this->dry_run) {return;}
             check_API_call_status(H5Dclose(dset_id), __LINE__);
             check_API_call_status(H5Sclose(dspace_id), __LINE__);
             check_API_call_status(H5Gclose(spax_id), __LINE__);
         }
         ~OutputFile()
         {
+            if (this->dry_run) {return;}
             check_API_call_status(H5Fclose(file_id), __LINE__);
         }
 };
@@ -690,25 +712,26 @@ void readEtaATM(
     myfile.close();
 }
 
-template <typename T, typename U>
+    template <typename T, typename U>
 void readAtmScreen(
         T **PWV_screen, 
         U *x_spec, 
         U *y_spec, 
         std::string path, 
-        std::string datp) 
+        std::string datp
+        ) 
 {
-    fs::path dir(path);
-    fs::path file(datp);
-    fs::path abs_loc = dir / file;
-
     *PWV_screen = new T[x_spec->num * y_spec->num];
     
     std::string store;
+    std::string line;
+    
+    fs::path dir(path);
+
+    fs::path file(datp);
+    fs::path abs_loc = dir / file;
 
     std::ifstream myfile(abs_loc);
-    std::string line;
-
     int line_nr = 0;
     int idx = 0;
     
@@ -725,11 +748,7 @@ void readAtmScreen(
             std::istringstream iss(line);
             while(std::getline(iss, store, ' ')) 
             {
-                if (store=="") 
-                {
-                    continue;
-                }
-                
+                if (store=="") {continue;}
                 (*PWV_screen)[y_spec->num * line_nr + idx] = std::stof(store);
                 idx++;
             }
@@ -739,3 +758,55 @@ void readAtmScreen(
         myfile.close();
     }
 }
+
+//template <typename T, typename U>
+//void readAtmScreen(
+//        T **PWV_screen, 
+//        U *x_spec, 
+//        U *y_spec, 
+//        std::string path, 
+//        std::vector<std::string> datp
+//        ) 
+//{
+//    int line_nr = 0;
+//    int idx = 0;
+//    int num_screen = datp.size();
+//
+//    *PWV_screen = new T[num_screen * x_spec->num * y_spec->num];
+//    
+//    std::string store;
+//    std::string line;
+//    
+//    fs::path dir(path);
+//
+//    for(int i=0; i<num_screen; i++)
+//    {
+//        fs::path file(datp[i]);
+//        fs::path abs_loc = dir / file;
+//
+//        std::ifstream myfile(abs_loc);
+//        
+//        if (!myfile)
+//        { 
+//            std::cerr 
+//                << "Could not open the file!" 
+//                << std::endl;
+//        }
+//        else
+//        {
+//            while(std::getline(myfile, line)) 
+//            {
+//                std::istringstream iss(line);
+//                while(std::getline(iss, store, ' ')) 
+//                {
+//                    if (store=="") {continue;}
+//                    (*PWV_screen)[y_spec->num * line_nr + idx] = std::stof(store);
+//                    idx++;
+//                }
+//                line_nr++;
+//                idx = 0;
+//            }
+//            myfile.close();
+//        }
+//    }
+//}

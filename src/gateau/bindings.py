@@ -7,6 +7,7 @@ from importlib import resources as impresources
 from ctypes import (
     POINTER,
     c_int,
+    c_bool,
     c_char_p,
     c_ulonglong,
     CDLL
@@ -62,6 +63,7 @@ def load_gateaulib() -> CDLL:
                                c_char_p,
                                c_char_p,
                                c_ulonglong,
+                               c_bool,
                                c_char_p,
                                ]
     
@@ -78,6 +80,7 @@ def run_gateau(instrument: dict[str, any],
                outpath: str,
                outscale: str,
                seed: int,
+               dry_run: bool,
                resourcepath: Union[str, None] = None, 
                ) -> None:
     """!
@@ -92,6 +95,7 @@ def run_gateau(instrument: dict[str, any],
     @param outpath Path to directory where gateau output is stored.
     @param outscale Scale of stored output (brightness temperature or power).
     @param seed Seed to use for noise calculations.
+    @param dry_run Whether to store output to disk or not.
     @param resourcepath Path to resources folder. 
         Defaults to None for autodetect.
     """
@@ -116,6 +120,7 @@ def run_gateau(instrument: dict[str, any],
     coutscale = c_char_p(outscale.encode())
     # FIXME bare encode
     cseed = c_ulonglong(seed)
+    cdry_run = c_bool(dry_run)
 
     with ExitStack() as stack:
         if resourcepath is None:
@@ -135,6 +140,7 @@ def run_gateau(instrument: dict[str, any],
             coutpath,
             coutscale,
             cseed,
+            cdry_run,
             catmpath,
             ]
 

@@ -97,6 +97,9 @@ def checkAtmosphereDict(atmosphereDict):
     
     if atmosphereDict.get("dy") is None:
         atmosphereDict["dy"] = DXY
+    
+    if atmosphereDict.get("screen_offset") is None:
+        atmosphereDict["screen_offset"] = 0
 
     for key in checklist:
         if atmosphereDict.get(key) is None:

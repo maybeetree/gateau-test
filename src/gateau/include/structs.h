@@ -67,6 +67,7 @@ struct Atmosphere
     char* path;    /**< Path to prepd folder.*/
     float pwv0;        /**< Average PWV at start of simulation.*/
     float pwv_slope;   /**< Linear slope of average PWV.*/
+    int screen_offset;
 };
 
 

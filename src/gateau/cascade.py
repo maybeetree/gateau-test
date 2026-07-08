@@ -14,6 +14,18 @@ from scipy.constants import h, k, c
 
 TCMB = 2.725
 
+def blackbody(f_src: np.ndarray, 
+                        T: float) -> np.ndarray:
+    """!
+    Blackbody intensity.
+
+    @param f_src Source frequencies. Units: Hz.
+    @param T Temperature. Units: K.
+
+    @returns Specific intensity. Units: W / m^2 / Hz / sr.
+    """
+    return 2 * h * f_src**3/ c**2 / np.expm1(h * f_src / (k * T))
+
 def johnson_nyquist_psd(f_src: np.ndarray, 
                         T: float) -> np.ndarray:
     """!
@@ -25,6 +37,25 @@ def johnson_nyquist_psd(f_src: np.ndarray,
     @returns Power spectral density. Units: W / Hz.
     """
     return h * f_src / np.expm1(h * f_src / (k * T))
+
+def get_psd_cib(f_src: np.ndarray) -> np.ndarray:
+    """!
+    Get single-moded power spectral density for the CIB monopole.
+    We assume here a modified blackbody spectrum with a normalization constant.
+    The expression and beta and T_eff were obtained from McCarthy & Hill, PRD (2024).
+    The normalization value of 0.371 MJy sr^-1 at 545 GHz was taken from Odegard et al., ApJ (2019).
+
+    @param f_src dource frequencies. Units: Hz.
+
+    @returns CIB single-moded monopole power spectral density. Units: W / Hz.
+    """
+
+    A = 0.371e-20 # MJy to W
+    f0 = 545e9
+    T_eff = 11.95
+    beta = 1.59
+
+    return A/2*(c/f_src)**2 * (f_src/f0)**beta * blackbody(f_src, T_eff) / blackbody(f0, T_eff)
 
 def window_trans(
     f_src: np.ndarray,
@@ -226,7 +257,8 @@ def save_cascade(cascade_list: list[dict[any, any]],
               yaml.dump(glob_dict, outfile)
 
 def get_cascade(cascade_list: list[dict[str, any]],
-                f_src: np.ndarray) -> tuple[np.ndarray, 
+                f_src: np.ndarray,
+                use_cib: bool) -> tuple[np.ndarray, 
                                            np.ndarray]:
     """!
     Calculate a cascade list, consisting of efficiency and psd per stage.
@@ -256,8 +288,9 @@ def get_cascade(cascade_list: list[dict[str, any]],
         This significantly unburdens the CUDA calculation kernel and should hence be used.
         The fieldname for grouping is 'groupname'. 
         Subsequent stages to be grouped together must have the same group name.
-
     @param f_src Array with source frequencies. Units: GHz.
+    @param use_cib Whether to add cosmic infrared background (CIB) monopole.
+        Engaging this adds a single-moded modified blackbody to the CMB signal.
     
     @returns List with list of arrays containing efficiencies as first element, 
         and list containing arrays of psd as second element. 
@@ -290,6 +323,9 @@ def get_cascade(cascade_list: list[dict[str, any]],
     eta_ap = np.ones(f_src.size)
 
     psd_cmb = johnson_nyquist_psd(f_src, TCMB)
+
+    if use_cib:
+        psd_cmb += get_psd_cib(f_src)
 
     for casc_t, idx_group in zip(cascade_type_list_uniq, idx_group_list_uniq):
         eta_ap_flag = 0
