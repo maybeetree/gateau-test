@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - "main"
 
 permissions:
   contents: write   # create release + upload assets
@@ -79,8 +81,8 @@ jobs:
         env:
           # THESE THREE ARE CONFIGURED IN GITHUB REPO SETTINGS
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
-          ZENODO_ID: ${{env.ZENODO_ID}}
-          ZENODO_API_TARGET: ${{env.ZENODO_API_TARGET}}
+          ZENODO_ID: ${{ZENODO_ID}}
+          ZENODO_API_TARGET: ${{ZENODO_API_TARGET}}
           # This comes from an action step above
           ZENODO_VERSION: ${{env.REPO_TAG}}
           # Include all files to be pushed to zenodo here
