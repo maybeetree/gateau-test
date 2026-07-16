@@ -77,13 +77,10 @@ jobs:
 
       - name: Create Zenodo deposition
         env:
-          # THESE THREE ARE CONFIGURED IN GITHUB REPO SETTINGS
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
-          #ZENODO_ID: ${{ZENODO_ID}}
-          #ZENODO_API_TARGET: ${{ZENODO_API_TARGET}}
-          # This comes from an action step above
+          ZENODO_ID: 566623
+          ZENODO_API_TARGET: https://sandbox.zenodo.org/api
           ZENODO_VERSION: ${{env.REPO_TAG}}
-          # Include all files to be pushed to zenodo here
           ZENODO_FILES: |
             ./gateau-${{env.REPO_TAG}}.zip:gateau-${{env.REPO_TAG}}.zip
             ./gateau-docs-${{env.REPO_TAG}}.tar.xz:gateau-docs-${{env.REPO_TAG}}.tar.xz
