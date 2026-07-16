@@ -51,8 +51,7 @@ jobs:
 
       - name: Make docs tarball
         run: |
-          set -e
-          tar cf - docs | xz > "gateau-docs-${tagname}.tar.xz"
+          tar cf - docs | xz > "gateau-docs-$REPO_TAG.tar.xz"
 
       - name: Make code ZIP archive for Zenodo
         run: |
